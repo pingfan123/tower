@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<style>
+    body {
+        background-image: url("img/背景.png");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+    img {
+        width: 50px;
+        height: 50px;
+    }
+
+    #wrap {
+        position: relative;
+        margin-left: 30%;
+        margin-top: 70px;
+        width: 802px;
+    }
+
+    #bt {
+        position: absolute;
+        left: 300px;
+        top: 50px;
+    }
+    #bt1 {
+        position: absolute;
+        left: 380px;
+        top: 50px;
+    }
+    #sure {
+        width:150px;
+        height:20px;
+        line-height:15px;
+        text-align: center;
+        background-color: #1d7ad9;
+        position: absolute;
+        bottom: 10px;
+        left:10px;
+    }
+    #doc {
+        width:100%;
+        height:100%;
+        background-color: rgba(2,2,2,0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top:0;
+        left:0;
+    }
+    #pox {
+        text-align: center;
+        position: relative;
+        width:600px;
+        height:100px;
+        background-color: crimson;
+    }
+    #pox span {
+        font-size: 24px;
+        color: #000;
+    }
+</style>
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body onload="onLoad()">
+<div id="wrap">
+    <canvas id="cvs" width="800" height="800" style="border: 1px solid;background-color: green"></canvas>
+    <div id="bt">
+        <img src="img/炮台.png" alt="">
+        <br>
+        <span style="color: red;width: 50px;height: 10px; margin-left: 10px"><strong>300</strong></span>
+    </div>
+    <div id="bt1">
+        <img src="img/炮台2.png" alt="">
+        <br>
+        <span style="color: red;width: 50px;height: 10px; margin-left: 10px"><strong>800</strong></span>
+    </div>
+</div>
+<div id="doc">
+    <div id="pox">
+        <span></span>
+        <button id="sure" onclick="sur()">确定</button>
+    </div>
+</div>
+<script>
+    var cvs = document.getElementById('cvs');
+    var ctx = cvs.getContext('2d');
+    var game = null;
+    var bt = document.getElementById('bt');
+    var bt1 = document.getElementById('bt1');
+    var mapdata = [];
+    var Sx = 0;    //小兵开始位置
+    var Sy = 0;
+    var tog = true;
+    var gridwidth = 50;   //方块的长度和宽度
+    var gridheight = 50;
+    var endx = 0;    //结束位置
+    var endy = 0;
+    var timer = null;
+    function onLoad() {
+        game = new Game();
+        game.update();
+    }
+
+    function Game() {
+        var _this = this;
+        this.solidarr = [];
+        this.i = 0;
+        this.money = 300;
+        this.j = 0;
+        this.bullets = [];
+        this.batteries = [];
+        this.bullets1 = [];
+        this.batteries1 = [];
+        this.round = 0;
+        this.solider1Cost = 300;
+        this.solider2Cost = 800;
+        this.log = true;
+        this.frame = 0;
+        this.pass = 1;
+        this.fog = false;  //判断是否点击了炮台，再进行放置
+        this.fog1 = 0;
+        this.fog2 = false;  //判断是否点击了炮台1，再进行放置
+        this.fog3 = 0;
+        this.lastframe = 0;
+        this.CD = 100;
+        this.pi = 0;
+        this.pi1 = 0;
+        this.tg = false; //判断是否扣钱
+        this.tg1 = false; //判断是否扣钱
+        this.map = new Map();
+        this.solider = new Soliders();
+        this.update = function () {
+
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            _this.map.draw();
+            if (_this.log || _this.solidarr.length <= 0) {
+                _this.frame++;
+                if (_this.frame >= _this.lastframe + _this.CD && _this.round<=6) {
+                    _this.solidarr.push(new Soliders(_this.i));
+                    _this.i++;
+                    _this.frame = _this.lastframe;
+                    if (_this.i % 6 == 1) {
+                        _this.round++;
+                    }
+                    if (_this.i % 6 == 0) {
+                        _this.log = false;
+                        _this.frame = 0;
+                        _this.lastframe = 0;
+                    }
+                    else {
+                        _this.log = true;
+                    }
+                }
+            }
+                _this.solidarr.forEach(function (t, index) {
+                    t.draw();
+                    t.updatePos();
+                    if (t.sx <= endx+gridwidth/10 && t.sy == endy) {
+                        _this.solidarr.splice(index, 1);
+                        game.map.hp -= 10;
+                        _this.j++;
+                        if (_this.j % 6 == 0) {
+                            _this.log = true;
+                            _this.round++;
+                        }
+                    }
+                });
+
+            if(_this.round>=6) {
+                if(_this.solidarr.length<=0 && tog) {
+                    game.map.maparr = [
+                        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+                        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+                        0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+                        0, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                    ];
+                    _this.round = 0;
+                    _this.bullets = [];
+                    _this.solidarr = [];
+                    _this.batteries = [];
+                    _this.money = 300;
+                    _this.map.hp = 100;
+                    _this.bullets1 = [];
+                    _this.batteries1 = [];
+                    _this.fog1 = 0;
+                    _this.fog3 = 0;
+                    game.map.save();
+                    game.solider.fog = true;
+                    game.solider.vlog = true;
+                    tog = false;
+                    _this.pass = 2;
+                }
+            }
+            cvs.onclick = function (e) {
+                if(_this.change ==1) {
+                    for (var i = 0; i < _this.batteries.length; i++) {
+                        if (_this.batteries[i].x == parseInt((e.pageX - wrap.offsetLeft) / gridwidth) * gridwidth &&
+                            _this.batteries[i].y == parseInt((e.pageY - wrap.offsetTop) / gridheight) * gridheight) {
+                            _this.fog1++;
+                        }
+                    }
+                    if (_this.fog1 == 0 && _this.fog == true && _this.money >= _this.solider1Cost) {
+                        _this.batteries.push(new Battery(_this.pi, e.pageX - wrap.offsetLeft, e.pageY - wrap.offsetTop));
+                        _this.pi++;
+                    }
+                    _this.batteries[i].mapdata.forEach(function (t) {
+                        if (t.dx == parseInt(_this.batteries[i].x / gridwidth) * gridwidth && t.dy == parseInt(_this.batteries[i].y / gridheight) * gridheight) {
+                            if (t.value == 0) {
+                                _this.tg = true;
+                            }
+                        }
+                    });
+                    _this.fog = false;
+                    _this.fog1 = 0;
+                }
+                if(_this.change ==2) {
+                    for (var i = 0; i < _this.batteries1.length; i++) {
+                        if (_this.batteries1[i].x == parseInt((e.pageX - wrap.offsetLeft) / gridwidth) * gridwidth &&
+                            _this.batteries1[i].y == parseInt((e.pageY - wrap.offsetTop) / gridheight) * gridheight) {
+                            _this.fog3++;
+                        }
+                    }
+                    if (_this.fog3 == 0 && _this.fog2 == true && _this.money >= _this.solider2Cost) {
+                        _this.batteries1.push(new Battery1(_this.pi1, e.pageX - wrap.offsetLeft, e.pageY - wrap.offsetTop));
+                        _this.pi1++;
+                    }
+                    _this.batteries1[i].mapdata.forEach(function (t) {
+                        if (t.dx == parseInt(_this.batteries1[i].x / gridwidth) * gridwidth && t.dy == parseInt(_this.batteries1[i].y / gridheight) * gridheight) {
+                            if (t.value == 0) {
+                                _this.tg1 = true;
+                            }
+                        }
+                    });
+                    _this.fog2 = false;
+                    _this.fog3 = 0;
+                }
+            };
+
+            _this.batteries.forEach(function (t) {
+                t.mapdata.forEach(function (t2) {
+                    if (t2.dx == parseInt(t.x / gridwidth) * gridwidth && t2.dy == parseInt(t.y / gridheight) * gridheight) {
+                        if (t2.value == 0) {
+                            t.draw();
+                            t.updatePos();
+                        }
+                    }
+                    if(_this.tg) {
+                        _this.money -= _this.solider1Cost;
+                        _this.tg = false;
+                    }
+                });
+                if (t.fire) {
+                    _this.bullets.push(new Bullets(t.angle, t.x, t.y));
+                }
+            });
+            _this.batteries1.forEach(function (t) {
+                t.mapdata.forEach(function (t2) {
+                    if (t2.dx == parseInt(t.x / gridwidth) * gridwidth && t2.dy == parseInt(t.y / gridheight) * gridheight) {
+                        if (t2.value == 0) {
+                            t.draw();
+                            t.updatePos();
+                        }
+                    }
+                    if(_this.tg1) {
+                        _this.money -= _this.solider2Cost;
+                        _this.tg1 = false;
+                    }
+                });
+                if (t.fire) {
+                    _this.bullets1.push(new Bullets1(t.angle, t.x, t.y));
+                }
+            });
+            _this.bullets.forEach(function (t, index) {
+                t.draw();
+                t.updatePos();
+                t.coll();
+                if (t.disappear) {
+                    _this.bullets.splice(index, 1);
+                }
+            });
+            _this.bullets1.forEach(function (t, index) {
+                t.draw();
+                t.updatePos();
+                t.coll();
+                if (t.disappear) {
+                    _this.bullets1.splice(index, 1);
+                }
+            });
+            if(game.map.hp> 0) {
+                timer = requestAnimationFrame(_this.update);
+            }
+            if(_this.pass == 2 && _this.round>=7 && game.map.hp>=0 && _this.solidarr.length<=0) {
+                _this.solidarr=[];
+                cancelAnimationFrame(timer);
+                doc.style.display = 'flex';
+                pox.children[0].innerHTML ='您赢了！！！';
+                }
+            else if(game.map.hp <= 0){
+                ctx.fillRect(endx, endy - 10, 0, 5);
+                cancelAnimationFrame(timer);
+                doc.style.display = 'flex';
+                pox.children[0].innerHTML ='您输了！！！'
+            }
+        }
+    }
+    function sur() {
+        doc.style.display = 'none';
+/*        game.map.maparr = [
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0,
+            0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0,
+            0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
+            0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+            0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0,
+            0, 4, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ];
+        game.round = 0;
+        game.bullets = [];
+        game.bullets1 = [];
+        game.solidarr = [];
+        game.batteries = [];
+        game.batteries1 = [];
+        game.fog1 = 0;
+        game.fog3 = 0;
+        game.money = 300;
+        game.map.hp = 100;
+        game.map.save();
+        game.solider.fog = true;
+        game.solider.vlog = true;
+        tog = false;
+        game.pass = 1;
+        game.update();*/
+    }
+    /*this.maparr = [
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+            0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+            0, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    ];
+    this.maparr = [
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0,
+            0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0,
+            0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
+            0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+            0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0,
+            0, 4, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ];*/
+    function Map() {
+        var _this = this;
+        this.maparr = [
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0,
+            0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0,
+            0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
+            0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+            0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0,
+            0, 4, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ];//0是草地，1是路径，2是控制台，3是起点，4是终点，5是炮台位置
+        this.obstacle = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+            0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+            0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ];
+        this.img0 = new Image();
+        this.img0.src = 'img/草地.png';
+        this.img1 = new Image();
+        this.img1.src = 'img/路.png';
+        this.img3 = new Image();
+        this.img3.src = 'img/起点.png';
+        this.img4 = new Image();
+        this.img4.src = 'img/终点.png';
+        this.img5 = new Image();
+        this.img5.src = 'img/shu.png';
+        this.gridWidth = gridwidth;
+        this.gridHeight = gridheight;
+        this.controlBack = new Image();
+        this.hp = 100;
+        this.controlBack.src = 'img/控制台.png';
+        this.notification = new Image();
+        this.notification.src = 'img/通告栏.png';
+        this.rowLength = parseInt(cvs.width / _this.gridWidth);
+        this.save = function () {
+            _this.maparr.forEach(function (t, index) {
+                if (t != 2) {
+                    var obj = {};
+                    obj.index = index;
+                    obj.value = t;
+                    obj.dx = _this.gridWidth * (index % _this.rowLength);
+                    obj.dy = _this.gridHeight * parseInt(index / _this.rowLength);
+                    mapdata.push(obj);
+                }
+            })
+        };
+        _this.save();
+        this.draw = function () {
+
+            _this.maparr.forEach(function (t, index) {
+                var col = index % _this.rowLength;
+                var row = parseInt(index / _this.rowLength);
+                if (t == 1 || t >= 9) {
+                    ctx.beginPath();
+                    ctx.drawImage(_this.img1, _this.gridWidth * col, _this.gridHeight * row, _this.gridWidth, _this.gridHeight);
+                }
+                if (t == 0) {
+                    ctx.beginPath();
+                    ctx.drawImage(_this.img0, _this.gridWidth * col, _this.gridHeight * row, _this.gridWidth, _this.gridHeight);
+                }
+                if (t == 2) {
+                    ctx.beginPath();
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(_this.gridWidth * col, _this.gridHeight * row, _this.gridWidth, _this.gridHeight);
+                }
+                if (t == 3) {
+                    ctx.beginPath();
+                    ctx.drawImage(_this.img3, _this.gridWidth * col, _this.gridHeight * row, _this.gridWidth, _this.gridHeight);
+                    Sx = _this.gridWidth * col;
+                    Sy = _this.gridHeight * row;
+                }
+                if (t == 4) {
+                    ctx.beginPath();
+                    ctx.drawImage(_this.img4, _this.gridWidth * col, _this.gridHeight * row, _this.gridWidth, _this.gridHeight);
+                    endx = _this.gridWidth * col;
+                    endy = _this.gridHeight * row;
+                }
+            });
+            _this.obstacle.forEach(function (t,index) {
+                var col = index % _this.rowLength;
+                var row = parseInt(index / _this.rowLength);
+                if (t == 1) {
+                    ctx.beginPath();
+                    ctx.drawImage(_this.img5, _this.gridWidth * col, _this.gridHeight * row, _this.gridWidth, _this.gridHeight);
+                }
+            });
+            ctx.beginPath();
+            ctx.drawImage(_this.controlBack, 0, 0, cvs.width, gridheight * 3);
+            ctx.beginPath();
+            ctx.drawImage(_this.notification, 50, 30, 150, 70);
+            ctx.beginPath();
+            ctx.font = '300 30px arial';
+            ctx.fillText('第' + (game.round) + '回合', 70, 85);
+            ctx.beginPath();
+            ctx.fillStyle = 'white';
+            ctx.fillRect(endx, endy - 10, 50, 5);
+            ctx.beginPath();
+            ctx.fillStyle = 'red';
+            ctx.fillRect(endx, endy - 10, _this.hp / 2, 5);
+            ctx.beginPath();
+            ctx.fillStyle = 'yellow';
+            ctx.font = '300 30px arial';
+            ctx.fillText('金币：' + game.money, 600, 50);
+        }
+    }
+
+    function Soliders(id) {
+        var _this = this;
+        this.id = id;
+        this.t = 1;
+        this.sx = Sx;
+        this.sy = Sy;
+        this.hp = 100;
+        this.value = 100;
+        this.img = new Image();
+        this.img.src = 'img/小兵.png';
+        this.index;
+        this.dt = 0;
+        this.number;
+        this.change = 0;
+        this.v = 1;
+        this.boxCheck = 50;
+        this.i = 2;
+        this.p;
+        this.minusboxCheck = 0;
+        this.minusv = 0;
+        this.fog = true;
+        this.vlog = true;
+        this.mapdata = JSON.parse(JSON.stringify(mapdata));
+        this.numberx = cvs.width / gridwidth;
+        this.o = _this.img.width / 2;
+        this.draw = function () {
+            ctx.beginPath();
+            ctx.fillStyle = 'red';
+            ctx.drawImage(_this.img, _this.p, _this.o, _this.img.width / 4, _this.img.height / 4, _this.sx, _this.sy, gridwidth, gridheight);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.fillStyle = 'white';
+            ctx.fillRect(_this.sx, _this.sy - 10, gridwidth, 5);
+            ctx.fillStyle = 'red';
+            ctx.fillRect(_this.sx, _this.sy - 10, _this.hp / _this.i, 5);
+        };
+        this.updatePos = function () {
+            if(_this.fog) {
+                _this.hp = 50+game.round*150;
+                _this.fog = false;
+            }
+            if (game.round == 2) {
+                game.CD = 100;
+                _this.boxCheck = 50;
+                _this.i = 7;
+                _this.dt += 1;
+                _this.v = 1;
+            }
+            if (game.round == 3) {
+                game.CD = 50;
+                _this.boxCheck = 25- _this.minusboxCheck;
+                _this.i = 10;
+                _this.dt += 1;
+                _this.v = 2-_this.minusv;
+            }
+            if (game.round == 4) {
+                game.CD = 40;
+                _this.boxCheck = 20- _this.minusboxCheck;
+                _this.i = 13;
+                _this.dt += 1;
+                _this.v = 2.5-_this.minusv;
+            }
+            if (game.round == 5) {
+                game.CD = 40;
+                _this.boxCheck = 20- _this.minusboxCheck;
+                _this.i = 16;
+                _this.dt += 1;
+                _this.v = 2.5-_this.minusv;
+            }
+            if (game.round >= 6) {
+                game.CD = 40;
+                _this.boxCheck = 20- _this.minusboxCheck;
+                _this.i = 19;
+                _this.dt += 1;
+                _this.v = 2.5-_this.minusv;
+            }
+            if (game.round == 1) {
+                game.CD = 200;
+                _this.boxCheck = 100;
+                _this.i = 4;
+                _this.dt += 1;
+                _this.v = 0.5-_this.minusv;
+            }
+
+            if (_this.vlog == true) {
+                for (var i = 0; i < _this.mapdata.length; i++) {
+                    if (_this.sx == _this.mapdata[i].dx && _this.sy == _this.mapdata[i].dy) {
+                        _this.index = _this.mapdata[i].index;
+                        _this.number = i;
+                    }
+                }
+                _this.vlog = false;
+            }
+            if (_this.mapdata[_this.number + _this.numberx].value == '1' || _this.mapdata[_this.number + _this.numberx].value == '4') {
+                _this.o = 0;
+                if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 4) {
+                    _this.p = 0;
+                }
+                else if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 2) {
+                    _this.p = _this.img.height / 4;
+                }
+                else if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 4 * 3) {
+                    _this.p = _this.img.height / 2;
+                }
+                else {
+                    _this.p = _this.img.height / 4 * 3;
+                }
+                _this.sy += _this.v * _this.t;
+                if (_this.dt % _this.boxCheck == 0) {
+                    _this.mapdata[_this.number + _this.numberx].value = 0;
+                    _this.index += 16;
+                    _this.number += 16;
+                }
+            }
+            else if (_this.mapdata[_this.number + 1].value == '1' || _this.mapdata[_this.number + 1].value == '4') {
+                _this.o = _this.img.width / 2;
+                if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 4) {
+                    _this.p = 0;
+                }
+                else if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 2) {
+                    _this.p = _this.img.height / 4;
+                }
+                else if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 4 * 3) {
+                    _this.p = _this.img.height / 2;
+                }
+                else {
+                    _this.p = _this.img.height / 4 * 3;
+                }
+                _this.sx += _this.v * _this.t;
+                if (_this.dt % _this.boxCheck == 0) {
+                    _this.mapdata[_this.number + 1].value = 0;
+                    _this.index += 1;
+                    _this.number += 1;
+                }
+            }
+            else if (_this.mapdata[_this.number - 1].value == '1' || _this.mapdata[_this.number - 1].value == '4') {
+                _this.o = _this.img.width / 4;
+                if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 4) {
+                    _this.p = 0;
+                }
+                else if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 2) {
+                    _this.p = _this.img.height / 4;
+                }
+                else if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 4 * 3) {
+                    _this.p = _this.img.height / 2;
+                }
+                else {
+                    _this.p = _this.img.height / 4 * 3;
+                }
+                _this.sx -= _this.v * _this.t;
+                if (_this.dt % _this.boxCheck == 0) {
+                    _this.mapdata[_this.number - 1].value = 0;
+                    _this.index -= 1;
+                    _this.number -= 1;
+                }
+            }
+            else if (_this.mapdata[_this.number - _this.numberx].value == '1' || _this.mapdata[_this.number - _this.numberx].value == '4') {
+                _this.o = _this.img.width / 4 * 3;
+                if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 4) {
+                    _this.p = 0;
+                }
+                else if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 2) {
+                    _this.p = _this.img.height / 4;
+                }
+                else if (_this.dt % _this.boxCheck / 5 * 4 < _this.boxCheck / 5 * 4 / 4 * 3) {
+                    _this.p = _this.img.height / 2;
+                }
+                else {
+                    _this.p = _this.img.height / 4 * 3;
+                }
+                _this.sy -= _this.v * _this.t;
+                if (_this.dt % _this.boxCheck == 0) {
+                    _this.mapdata[_this.number - _this.numberx].value = 0;
+                    _this.index -= 16;
+                    _this.number -= 16;
+                }
+            }
+        }
+    }
+    function Battery(id,x,y) {
+        var _this = this;
+        this.img = new Image();
+        this.mapdata = JSON.parse(JSON.stringify(mapdata));
+        this.img.src = 'img/炮台.png';
+        Batter.call(this,id,x,y,false,gridwidth*4)
+    }
+    function Battery1(id,x,y) {
+        var _this = this;
+        this.img = new Image();
+        this.mapdata = JSON.parse(JSON.stringify(mapdata));
+        this.img.src = 'img/炮台2.png';
+        Batter.call(this,id,x,y,false,gridwidth*8)
+    }
+    function Batter(id, x, y,fire,limit) {
+        var _this = this;
+        this.x = x;
+        this.y = y;
+        this.id = id;
+        this.minx = [];
+        this.CD = 20;
+        this.currentCD = 0;
+        this.angle = 0;
+        this.fire = fire;
+        this.numberx = parseInt(_this.x / gridwidth);
+        this.numbery = parseInt(_this.y / gridheight);
+        this.fog = true;
+        this.limit =limit;
+        this.draw = function () {
+            ctx.save();
+            ctx.beginPath();
+            ctx.translate(_this.x + gridwidth / 2, _this.y + gridheight / 2);
+            ctx.rotate(_this.angle);
+            ctx.drawImage(_this.img, -gridwidth / 2, -gridheight / 2, 50, 50);
+            ctx.restore();
+        };
+        this.updatePos = function () {
+            _this.minx = [];
+            _this.currentCD++;
+            _this.x = _this.numberx * (gridwidth);
+            _this.y = _this.numbery * (gridheight);
+            game.solidarr.forEach(function (t, index) {
+                var dx = t.sx - _this.x;
+                var dy = t.sy - _this.y;
+                if (Math.sqrt(dx * dx + dy * dy) <= _this.limit && _this.currentCD > _this.CD) {
+                    var obj = {};
+                    obj.mx = Math.sqrt(dx * dx + dy * dy);
+                    obj.index = index;
+                    obj.x = dx;
+                    obj.y = dy;
+                    _this.minx.push(obj);
+                    _this.currentCD = 0;
+                }
+            });
+            _this.minx.sort(function (a, b) {
+                return a.mx - b.mx;
+            });
+            if (_this.minx.length > 0) {
+                _this.angle = Math.atan2(_this.minx[0].y, _this.minx[0].x) + Math.PI / 2;
+                _this.fire = true;
+            }
+            else {
+                _this.fire = false;
+            }
+        }
+    }
+
+    bt.onclick = function () {
+        game.fog = true;
+        game.change = 1;
+    };
+    bt1.onclick = function () {
+        game.fog2 = true;
+        game.change = 2;
+    };
+    function Bullets(angle, x, y) {
+        var _this = this;
+        this.img = new Image();
+        this.img.src = 'img/子弹.png';
+        Bullet.call(this,angle,x,y,5,1,15,false);
+    }
+    function Bullets1(angle, x, y) {
+        var _this = this;
+        this.img = new Image();
+        this.img.src = 'img/子弹1.png';
+        Bullet.call(this,angle,x,y,3,1,2,false);
+        this.coll = function () {
+            game.solidarr.forEach(function (t, index) {
+                var dx = _this.x - t.sx;
+                var dy = _this.y - t.sy;
+                if (Math.sqrt(dx * dx + dy * dy) <= gridwidth/4 + gridwidth / 2) {
+                    t.hp -= _this.hunt;
+                    if (t.hp <= 0) {
+                        game.solidarr.splice(index, 1);
+                        game.money += t.value;
+                    }
+                }
+            })
+        }
+    }
+    function Bullet(angle, x, y,v,t,hunt,disappear) {
+        var _this = this;
+        this.x = x;
+        this.y = y;
+        this.angle = angle;
+        this.v = v;
+        this.t = t;
+        this.hunt = hunt;
+        this.disappear = disappear;
+        this.draw = function () {
+            ctx.save();
+            ctx.translate(_this.x+gridwidth/2 +gridwidth / 2 * Math.cos(_this.angle - Math.PI / 2), _this.y+gridheight/2+gridheight / 2 * Math.sin(_this.angle - Math.PI / 2));
+            ctx.rotate(_this.angle);
+            ctx.beginPath();
+            ctx.drawImage(_this.img,-gridwidth/4,-gridheight/4,gridwidth/2,gridheight/2);
+            ctx.restore();
+            //ctx.fillStyle = 'red';
+            //ctx.arc(_this.x + gridwidth / 2 + gridwidth / 2 * Math.cos(_this.angle - Math.PI / 2), _this.y + gridheight / 2 + gridheight / 2 * Math.sin(_this.angle - Math.PI / 2), _this.r, 0, Math.PI * 2);
+            //ctx.fill();
+        };
+        this.updatePos = function () {
+            _this.x += _this.v * _this.t * Math.cos(_this.angle - Math.PI / 2);
+            _this.y += _this.v * _this.t * Math.sin(_this.angle - Math.PI / 2);
+        };
+        this.coll = function () {
+            game.solidarr.forEach(function (t, index) {
+                var dx = _this.x - t.sx;
+                var dy = _this.y - t.sy;
+                if (Math.sqrt(dx * dx + dy * dy) <= gridwidth/4 + gridwidth / 2) {
+                    _this.disappear = true;
+                    t.hp -= _this.hunt;
+                    if (t.hp <= 0) {
+                        game.solidarr.splice(index, 1);
+                        game.money += t.value;
+                    }
+                }
+            })
+        }
+    }
+
+</script>
+</body>
+</html>
